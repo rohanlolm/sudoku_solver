@@ -31,7 +31,7 @@ int solver_eng1(int *puzzle, int possibles[][9], int *poss_lenth);
 int poss(int *puzzle, char mode, int elem, int *poss); 
 int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int length2);
 int solve1(int *puzzle, int possibles[][9], int *poss_length);
-int hidden_singles_rows(int *puzzle, int row, int possibles[][9]);
+int hidden_singles(int *puzzle, int row, int possibles[][9], char mode);
 
 
 int main(int argc, char **argv){
@@ -180,8 +180,10 @@ int solve1(int *puzzle, int possibles[][9], int *poss_length){
         }
     }
 
-    for(int row = 0; row < 9; row++){
-        if( hidden_singles_rows(puzzle, row, possibles) ) change_made++;
+    for(int group = 0; group < 9; group++){
+        if( hidden_singles(puzzle, group, possibles, 'r') )  change_made++;
+        else if( hidden_singles(puzzle, group, possibles, 'c') ) change_made++;
+        else if( hidden_singles(puzzle, group, possibles, 'b') ) change_made++; 
     }
 
 //Check if solved. 
@@ -333,19 +335,44 @@ int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int l
     return k; //length of merged list 
 }
 
-int hidden_singles_rows(int *puzzle, int row, int possibles[][9]){
+int hidden_singles(int *puzzle, int group_indx, int possibles[][9], char mode){
     int j = 0;
     int poss_counter[9] = {0}; 
     int poss_first_indx[9] = {-1};
-    int change_made = FALSE; 
+    int change_made = FALSE;
+    int vector_index[9] = {0};
 
-    for(int i = row*9; i < 9*(row+1); i++){
+    if(mode == 'r'){
+        for(int i = 0; i < 9; i++){
+            vector_index[i] = group_indx*9+i;
+        }
+    }
+
+    if(mode == 'c'){
+        int l = 0; 
+        for(int i = group_indx; i<81; i=i+9){
+            vector_index[l] = i;
+            l++;
+        }
+    }
+
+    if(mode == 'b'){
+        int puz_inds[9] = {0,3,6,27,30,33,54,57,60}; 
+        int puz_start = puz_inds[group_indx];
+        for(int i=0; i<9; i++){
+            if (i < 3) vector_index[i] = puz_start+i;
+            if (i>=3 && i < 6) vector_index[i] = puz_start+9+i%3;
+            if (i>=6 && i < 9) vector_index[i] = puz_start+18+i%3;
+        }
+    }
+
+    for(int i = 0; i < 9; i++){
         j=0;
-        while( possibles[i][j] != 0 ){
+        while( possibles[vector_index[i]][j] != 0 ){
             for(int k = 1; k < 10; k++){
-                if(possibles[i][j] == k){
+                if(possibles[vector_index[i]][j] == k){
                     poss_counter[k-1]++;
-                    poss_first_indx[k-1] = i;
+                    poss_first_indx[k-1] = vector_index[i];
                     break;
                 }
             }
