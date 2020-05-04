@@ -27,10 +27,12 @@ int valid_vector(int *vector);
 int print_puzzle(int *puzzle); 
 int print_vector(int *vector);
 int solve_puzzle(int *puzzle); 
-int solver_eng1(int *puzzle);
+int solver_eng1(int *puzzle, int possibles[][9], int *poss_lenth);
 int poss(int *puzzle, char mode, int elem, int *poss); 
 int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int length2);
 int solve1(int *puzzle, int possibles[][9], int *poss_length);
+int hidden_singles_rows(int *puzzle, int row, int possibles[][9]);
+
 
 int main(int argc, char **argv){
     char opt; 
@@ -52,7 +54,23 @@ int puzzle_reader(char *str_puzzle){
 }
 
 int solve_puzzle(int *puzzle){
-    solver_eng1(puzzle);
+    int solve_state = 0;
+    int possibles[81][9] = {{0}};
+    int poss_length[81] = {-1}; //set default lengths to -1 
+    int iters = 0; 
+
+    while(solve_state != 1 && iters < MAX_ITERS){
+        solve_state = solver_eng1(puzzle, possibles, poss_length);
+        if( solve_state == -1){
+            fprintf(stderr, "Guess required. Iteration:%d\n", iters);
+            print_puzzle(puzzle);
+            for(int pi = 0; pi < 81; pi++){
+                fprintf(stderr, "%d ", poss_length[pi]);
+            }
+            exit(EXIT_FAILURE); 
+        }
+    }
+
     return 0; 
 }
 
@@ -109,12 +127,10 @@ int build_puzzle(char *str_puzzle, int *puzzle){
      return 0; 
 }
 
-int solver_eng1(int *puzzle){ //basic engine which solves it like pleb brute force
+int solver_eng1(int *puzzle, int possibles[][9], int *poss_length){ //basic engine which solves it like pleb brute force
     int row_poss[9] = {0}; 
     int col_poss[9] = {0}; 
     int block_poss[9]= {0}; 
-    int possibles[81][9] = {{0}};
-    int poss_length[81] = {-1}; //set default lengths to -1 
     int puzzle_solved = FALSE;
     int iterations = 0;
     int row_poss_len = 0; 
@@ -140,15 +156,10 @@ int solver_eng1(int *puzzle){ //basic engine which solves it like pleb brute for
         }
         puzzle_solved = solve1(puzzle, possibles, poss_length);  //Solve what you can uniquely. If you can't guess and try and solve uniquely. Will have to keep track of guesses some how? Maybe save puzzle states as 'backups'
         if(puzzle_solved == -1){
-            fprintf(stderr, "Guess required. Iteration:%d\n", iterations);
-            print_puzzle(puzzle);
-            for(int pi = 0; pi < 81; pi++){
-                fprintf(stderr, "%d ", poss_length[pi]);
-            }
-            exit(EXIT_FAILURE); 
+            return puzzle_solved; //Generate branch. 
         }
-        memset(possibles, 0, sizeof possibles); //Reset the possibilities after each pass.
-        memset(poss_length, 0, sizeof poss_length);
+        memset(possibles, 0, 81*9*sizeof(int)); //Reset the possibilities after each pass.
+        memset(poss_length, -1, 81*sizeof(int));
         iterations++;
     }
     return puzzle_solved;
@@ -169,13 +180,17 @@ int solve1(int *puzzle, int possibles[][9], int *poss_length){
         }
     }
 
+    for(int row = 0; row < 9; row++){
+        if( hidden_singles_rows(puzzle, row, possibles) ) change_made++;
+    }
+
 //Check if solved. 
     if(num_zeros == 0){
         printf("\n Puzzle Solved:\n"); 
         print_puzzle(puzzle); 
         solved = TRUE;
         exit(EXIT_SUCCESS); 
-    } 
+    }
 
     if(change_made == FALSE && solved == FALSE){
         return -1; //Branch needed  
@@ -316,4 +331,34 @@ int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int l
         j++;
     }
     return k; //length of merged list 
+}
+
+int hidden_singles_rows(int *puzzle, int row, int possibles[][9]){
+    int j = 0;
+    int poss_counter[9] = {0}; 
+    int poss_first_indx[9] = {-1};
+    int change_made = FALSE; 
+
+    for(int i = row*9; i < 9*(row+1); i++){
+        j=0;
+        while( possibles[i][j] != 0 ){
+            for(int k = 1; k < 10; k++){
+                if(possibles[i][j] == k){
+                    poss_counter[k-1]++;
+                    poss_first_indx[k-1] = i;
+                    break;
+                }
+            }
+            j++;
+        }         
+    }
+
+    for(int x = 0; x < 9; x++){
+        if(poss_counter[x] == 1){
+            puzzle[poss_first_indx[x]] = x+1; //Array indexed 0, but sodoku starts 1 
+            change_made = TRUE; 
+        }
+    }
+
+    return change_made; 
 }
