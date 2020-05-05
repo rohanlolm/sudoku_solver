@@ -12,7 +12,6 @@ D1 - 2.5 hours
 #include <string.h>
 #include <ctype.h> 
 
-
 #define FALSE 0
 #define TRUE 1 
 #define MAX_ITERS 100
