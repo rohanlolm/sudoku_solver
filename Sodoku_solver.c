@@ -17,22 +17,6 @@ D1 - 2.5 hours
 #define TRUE 1 
 #define MAX_ITERS 100
 
-int puzzle_reader(char *puzzle);
-int sod_file_parser(char *filename); 
-int build_puzzle(char *str_puzzle, int *puzzle);
-int get_block(int *puzzle, int n, int *vector); 
-int get_row(int *puzzle, int n, int *vector);  
-int get_col(int *puzzle, int n, int *vector); 
-int valid_vector(int *vector); 
-int print_puzzle(int *puzzle); 
-int print_vector(int *vector);
-int solve_puzzle(int *puzzle); 
-int solver_eng1(int *puzzle, int possibles[][9], int *poss_lenth);
-int poss(int *puzzle, char mode, int elem, int *poss); 
-int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int length2);
-int solve1(int *puzzle, int possibles[][9], int *poss_length);
-int hidden_singles(int *puzzle, int row, int possibles[][9], char mode);
-
 typedef struct puzzle_state{
     int solve_state; 
     int puzzle[81]; 
@@ -40,42 +24,55 @@ typedef struct puzzle_state{
     int possibles[81][9];
 } Puzzle; 
 
+int puzzle_reader(Puzzle *p_puz, char *str_puzzle);
+int sod_file_parser(char *filename); 
+int build_puzzle(char *str_puzzle, Puzzle *p_puz);
+int get_block(int *puzzle, int n, int *vector); 
+int get_row(int *puzzle, int n, int *vector);  
+int get_col(int *puzzle, int n, int *vector); 
+int valid_vector(int *vector); 
+int print_puzzle(Puzzle *p_puz); 
+int print_vector(int *vector);
+int solve_puzzle(Puzzle *p_puz); 
+int solver_eng1(Puzzle *p_puz);
+int poss(int *puzzle, char mode, int elem, int *poss); 
+int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int length2);
+int solve1(Puzzle *p_puz);
+int hidden_singles(Puzzle *p_puz, int row, char mode);
+
+
 int main(int argc, char **argv){
     char opt;
-    Puzzle puz = {FALSE, {0}, {0}, {{0}}};
+    Puzzle puz = { FALSE, {0}, {-1}, {{0}} };
 
     while( (opt = getopt(argc,argv,"p:,f:"))  !=-1 ) {			//Use getopt to loop through arguments
-		if(opt == 'p') puzzle_reader(optarg); //puzzle
+		if(opt == 'p') puzzle_reader(&puz, optarg); //puzzle
 		else if(opt == 'f') sod_file_parser(optarg); //file 
     }
-    return 0; 
-}
 
-int puzzle_reader(char *str_puzzle){
-    int puzzle[81] = {0}; 
-    build_puzzle(str_puzzle, puzzle);
-    print_puzzle(puzzle);
-    solve_puzzle(puzzle);
+    solve_puzzle(&puz);
 
     return 0; 
 }
 
-int solve_puzzle(int *puzzle){
+int puzzle_reader(Puzzle *p_puz, char *str_puzzle){
+    build_puzzle(str_puzzle, p_puz);
+    print_puzzle(p_puz);
+
+    return 0; 
+}
+
+int solve_puzzle(Puzzle *p_puz){
     
-    Puzzle_state Puz
-    
-    int solve_state = 0;
-    int possibles[81][9] = {{0}};
-    int poss_length[81] = {-1}; //set default lengths to -1 
     int iters = 0; 
 
-    while(solve_state != 1 && iters < MAX_ITERS){
-        solve_state = solver_eng1(puzzle, possibles, poss_length);
-        if( solve_state == -1){
+    while(p_puz->solve_state != 1 && iters < MAX_ITERS){
+        solver_eng1(p_puz);
+        if( p_puz->solve_state == -1 ){
             fprintf(stderr, "Guess required. Iteration:%d\n", iters);
-            print_puzzle(puzzle);
+            print_puzzle(p_puz);
             for(int pi = 0; pi < 81; pi++){
-                fprintf(stderr, "%d ", poss_length[pi]);
+                fprintf(stderr, "%d ", p_puz->poss_length[pi]);
             }
             exit(EXIT_FAILURE); 
         }
@@ -84,7 +81,7 @@ int solve_puzzle(int *puzzle){
     return 0; 
 }
 
-int build_puzzle(char *str_puzzle, int *puzzle){
+int build_puzzle(char *str_puzzle, Puzzle *p_puz){
     int vector[9] = {0};
     int digit_counter = 0; 
     
@@ -100,12 +97,12 @@ int build_puzzle(char *str_puzzle, int *puzzle){
         }
         if( isdigit(str_puzzle[i]) ){
             digit_counter++; 
-            puzzle[i] = str_puzzle[i] - '0'; //Build numeric puzzle from string using ASCII offset
+            p_puz->puzzle[i] = str_puzzle[i] - '0'; //Build numeric puzzle from string using ASCII offset
         }
         else if(str_puzzle[i] == '.'){
-            puzzle[i] = 0; 
+            p_puz->puzzle[i] = 0; 
         }
-        if(puzzle[i] <0 || puzzle[i]>9){
+        if(p_puz->puzzle[i] <0 || p_puz->puzzle[i]>9){
             fprintf(stderr, "Invalid input - value not in range [0,9]\n"); 
             exit(EXIT_FAILURE); 
         }        
@@ -117,17 +114,17 @@ int build_puzzle(char *str_puzzle, int *puzzle){
     
     //Check for duplicates
     for(int i=0; i<9; i++){ 
-        get_block(puzzle, i, vector);
+        get_block(p_puz->puzzle, i, vector);
         if( !valid_vector(vector) ){
             fprintf(stderr, "Invalid Block: %d (duplicates)", i); 
             exit(EXIT_FAILURE); 
         }
-        get_row(puzzle, i, vector); 
+        get_row(p_puz->puzzle, i, vector); 
         if( !valid_vector(vector) ){
             fprintf(stderr, "Invalid Row: %d (duplicates)", i); 
             exit(EXIT_FAILURE); 
         }
-        get_col(puzzle, i, vector);
+        get_col(p_puz->puzzle, i, vector);
         if( !valid_vector(vector) ){
             fprintf(stderr, "Invalid Col:%d (duplicates)", i); 
             exit(EXIT_FAILURE); 
@@ -137,77 +134,80 @@ int build_puzzle(char *str_puzzle, int *puzzle){
      return 0; 
 }
 
-int solver_eng1(int *puzzle, int possibles[][9], int *poss_length){ //basic engine which solves it like pleb brute force
+int solver_eng1(Puzzle *p_puz){ //basic engine which solves it like pleb brute force
     int row_poss[9] = {0}; 
     int col_poss[9] = {0}; 
     int block_poss[9]= {0}; 
-    int puzzle_solved = FALSE;
     int iterations = 0;
     int row_poss_len = 0; 
     int col_poss_len = 0; 
     int block_poss_len = 0;
     int temp_merge[9] = {0};
-    int merge_len = 0; 
+    int merge_len = 0;  
     
-    while( !puzzle_solved && iterations < MAX_ITERS ){
+    while( !p_puz->solve_state && iterations < MAX_ITERS ){
         for(int i=0; i <81; i++){
-            if(puzzle[i] == 0){
-                row_poss_len = poss(puzzle, 'r', i, row_poss);    //Allowable in the row 
-                col_poss_len = poss(puzzle, 'c', i, col_poss);    //Allowable in the row 
-                block_poss_len = poss(puzzle, 'b', i, block_poss);  //Allowable in the row
+            if(p_puz->puzzle[i] == 0){
+                row_poss_len = poss(p_puz->puzzle, 'r', i, row_poss);    //Allowable in the row 
+                col_poss_len = poss(p_puz->puzzle, 'c', i, col_poss);    //Allowable in the row 
+                block_poss_len = poss(p_puz->puzzle, 'b', i, block_poss);  //Allowable in the row
                 if(row_poss_len == 0 || col_poss_len == 0 || block_poss_len == 0){
                     return FALSE; // Puzzle failed to solve
                 }
                 memset(temp_merge, 0, sizeof temp_merge);
                 merge_len = merge_int_lists(row_poss, col_poss, temp_merge, row_poss_len, col_poss_len);
-                poss_length[i] = merge_int_lists(temp_merge, block_poss, &possibles[i][0], merge_len, block_poss_len);
+                p_puz->poss_length[i] = merge_int_lists(temp_merge, block_poss, &p_puz->possibles[i][0], merge_len, block_poss_len);
                 //I now have a list of valid possibilities for each empty 
             }
         }
-        puzzle_solved = solve1(puzzle, possibles, poss_length);  //Solve what you can uniquely. If you can't guess and try and solve uniquely. Will have to keep track of guesses some how? Maybe save puzzle states as 'backups'
-        if(puzzle_solved == -1){
-            return puzzle_solved; //Generate branch. 
+        solve1(p_puz);  //Solve what you can uniquely. If you can't guess and try and solve uniquely. Will have to keep track of guesses some how? Maybe save puzzle states as 'backups'
+        if(p_puz->solve_state == -1){
+            return p_puz->solve_state; //Generate branch. 
         }
-        memset(possibles, 0, 81*9*sizeof(int)); //Reset the possibilities after each pass.
-        memset(poss_length, -1, 81*sizeof(int));
+        memset(p_puz->possibles, 0, 81*9*sizeof(int)); //Reset the possibilities after each pass.
+        memset(p_puz->poss_length, -1, 81*sizeof(int));
         iterations++;
     }
-    return puzzle_solved;
+    return p_puz->solve_state;
 }
 
-int solve1(int *puzzle, int possibles[][9], int *poss_length){
+int solve1(Puzzle *p_puz){
     int change_made = FALSE;
     int solved = FALSE;
     int num_zeros  = 0; 
 
     for(int i = 0; i < 81; i++){
-        if(poss_length[i] == 1){ // Strictly only one possibility for a particular cell
-            puzzle[i] = possibles[i][0];
+        if(p_puz->poss_length[i] == 1){ // Strictly only one possibility for a particular cell
+            p_puz->puzzle[i] = p_puz->possibles[i][0];
             change_made = TRUE; 
         }
-        if(puzzle[i] == 0){
+        if(p_puz->puzzle[i] == 0){
             num_zeros++; 
         }
     }
 
     for(int group = 0; group < 9; group++){
-        if( hidden_singles(puzzle, group, possibles, 'r') )  change_made++;
-        else if( hidden_singles(puzzle, group, possibles, 'c') ) change_made++;
-        else if( hidden_singles(puzzle, group, possibles, 'b') ) change_made++; 
+        if( hidden_singles(p_puz, group, 'r') )  change_made++;
+        else if( hidden_singles(p_puz, group, 'c') ) change_made++;
+        else if( hidden_singles(p_puz, group, 'b') ) change_made++; 
     }
 
 //Check if solved. 
     if(num_zeros == 0){
         printf("\n Puzzle Solved:\n"); 
-        print_puzzle(puzzle); 
-        solved = TRUE;
+        print_puzzle(p_puz); 
+        p_puz->solve_state = TRUE;
         exit(EXIT_SUCCESS); 
     }
 
     if(change_made == FALSE && solved == FALSE){
+        p_puz->solve_state = -1;
         return -1; //Branch needed  
     }
-    else return 0; 
+    else{
+        p_puz->solve_state = FALSE; 
+        return 0; 
+    } 
 }
 
 int poss(int *puzzle, char mode, int elem, int *poss){
@@ -292,13 +292,13 @@ int valid_vector(int *vector){
     return 1; // Valid, incomplete row. 
 }
 
-int print_puzzle(int *puzzle){
+int print_puzzle(Puzzle *p_puz){
     int vector[9] = {0};
     printf("\n  ===================\n");
     for(int i=0; i<9; i++){ 
         if(i == 3 || i == 6) printf("||-------------------||\n");
         printf("||");
-        get_row(puzzle, i, vector);
+        get_row(p_puz->puzzle, i, vector);
         for(int k=0; k<9; k++){
             if(k == 3 || k == 6) printf("|");
             if(k != 8) printf("%d ", vector[k]);
@@ -345,7 +345,7 @@ int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int l
     return k; //length of merged list 
 }
 
-int hidden_singles(int *puzzle, int group_indx, int possibles[][9], char mode){
+int hidden_singles(Puzzle *p_puz, int group_indx, char mode){
     int j = 0;
     int poss_counter[9] = {0}; 
     int poss_first_indx[9] = {-1};
@@ -378,9 +378,9 @@ int hidden_singles(int *puzzle, int group_indx, int possibles[][9], char mode){
 
     for(int i = 0; i < 9; i++){
         j=0;
-        while( possibles[vector_index[i]][j] != 0 ){
+        while( p_puz->possibles[vector_index[i]][j] != 0 ){
             for(int k = 1; k < 10; k++){
-                if(possibles[vector_index[i]][j] == k){
+                if(p_puz->possibles[vector_index[i]][j] == k){
                     poss_counter[k-1]++;
                     poss_first_indx[k-1] = vector_index[i];
                     break;
@@ -392,12 +392,10 @@ int hidden_singles(int *puzzle, int group_indx, int possibles[][9], char mode){
 
     for(int x = 0; x < 9; x++){
         if(poss_counter[x] == 1){
-            puzzle[poss_first_indx[x]] = x+1; //Array indexed 0, but sodoku starts 1 
+            p_puz->puzzle[poss_first_indx[x]] = x+1; //Array indexed 0, but sodoku starts 1 
             change_made = TRUE; 
         }
     }
 
     return change_made; 
 }
-
-int generate_poss_matrix(int *puzzle, int possibles[][9])
