@@ -33,9 +33,16 @@ int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int l
 int solve1(int *puzzle, int possibles[][9], int *poss_length);
 int hidden_singles(int *puzzle, int row, int possibles[][9], char mode);
 
+typedef struct puzzle_state{
+    int solve_state; 
+    int puzzle[81]; 
+    int poss_length[81]; 
+    int possibles[81][9];
+} Puzzle; 
 
 int main(int argc, char **argv){
-    char opt; 
+    char opt;
+    Puzzle puz = {FALSE, {0}, {0}, {{0}}};
 
     while( (opt = getopt(argc,argv,"p:,f:"))  !=-1 ) {			//Use getopt to loop through arguments
 		if(opt == 'p') puzzle_reader(optarg); //puzzle
@@ -54,6 +61,9 @@ int puzzle_reader(char *str_puzzle){
 }
 
 int solve_puzzle(int *puzzle){
+    
+    Puzzle_state Puz
+    
     int solve_state = 0;
     int possibles[81][9] = {{0}};
     int poss_length[81] = {-1}; //set default lengths to -1 
@@ -389,3 +399,5 @@ int hidden_singles(int *puzzle, int group_indx, int possibles[][9], char mode){
 
     return change_made; 
 }
+
+int generate_poss_matrix(int *puzzle, int possibles[][9])
