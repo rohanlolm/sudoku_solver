@@ -39,6 +39,7 @@ int poss(int *puzzle, char mode, int elem, int *poss);
 int merge_int_lists(int *list1, int *list2, int *merged_list, int length1, int length2);
 int solve1(Puzzle *p_puz);
 int hidden_singles(Puzzle *p_puz, int row, char mode);
+static FILE* xfopen(char *filename, char *option);
 
 
 int main(int argc, char **argv){
@@ -318,7 +319,9 @@ int print_vector(int *vector){
     return 0; 
 }
 
-int sod_file_parser(char *filename){ 
+int sod_file_parser(char *filename){
+    FILE *sdk_file = xfopen(filename, "r");
+    fclose(sdk_file);
     return 0; 
 }
 
@@ -398,4 +401,13 @@ int hidden_singles(Puzzle *p_puz, int group_indx, char mode){
     }
 
     return change_made; 
+}
+
+static FILE* xfopen(char *filename, char *option){ 
+	FILE *retp = fopen(filename, option); 
+	if( retp == NULL ){ 
+		fprintf(stderr,"File %s failed to open. \n",filename); 
+		exit(EXIT_FAILURE); 
+	}
+	return retp;
 }
