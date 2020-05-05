@@ -76,7 +76,7 @@ int solve_puzzle(int *puzzle){
 
 int build_puzzle(char *str_puzzle, int *puzzle){
     int vector[9] = {0};
-    int digit_counter = 0; 
+    int starting_counter = 0; 
     
     //Check string input validity 
     if(strlen(str_puzzle) != 81){
@@ -89,7 +89,7 @@ int build_puzzle(char *str_puzzle, int *puzzle){
             exit(EXIT_FAILURE);
         }
         if( isdigit(str_puzzle[i]) ){
-            digit_counter++; 
+            if( str_puzzle[i] != '0' ) starting_counter++; 
             puzzle[i] = str_puzzle[i] - '0'; //Build numeric puzzle from string using ASCII offset
         }
         else if(str_puzzle[i] == '.'){
@@ -100,8 +100,8 @@ int build_puzzle(char *str_puzzle, int *puzzle){
             exit(EXIT_FAILURE); 
         }        
     }
-    if( digit_counter <17 ){
-        fprintf(stderr,"Puzzle does not contain enough starting values for unique solution. Minimum 17\n."); //Check for illegal characters
+    if( starting_counter <17 ){
+        fprintf(stderr,"Puzzle does not contain enough starting values for unique solution. Minimum 17\n"); //Check for illegal characters
         exit(EXIT_FAILURE);
     }
     
